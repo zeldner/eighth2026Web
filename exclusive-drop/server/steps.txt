@@ -1,0 +1,95 @@
+npm init -y
+npm install express mongoose cors dotenv
+
+express :  The Web Framework.
+    The Analogy: Think of Node.js as the engine of a car. Express is the steering wheel, pedals, and dashboard.
+    Node.js by itself is just a runtime—it knows how to execute JavaScript , but it doesn't know how to handle web requests easily. Express simplifies everything.
+    Without Express: We would write 50 lines of complex code just to receive a request.
+    With Express: We write app.get('/status') and we are done. It handles the routing (URLs) and the responses.
+
+mongoose :   The ODM (Object Data Modeling) library.
+    The Analogy: The Translator and Bodyguard for our database.
+    MongoDB is very flexible; it lets us save anything (even bad data). Mongoose enforces rules (Schemas).
+    It translates our TypeScript code (Order.create(...)) into MongoDB commands.
+    It acts as a bodyguard: If we defined that an Order must have an email, and you try to save one without it, Mongoose will block it and throw an error.
+
+cors : (Cross-Origin Resource Sharing) , A Security Middleware.
+    The Analogy: A Visa / Border Control.
+    Browsers have a strict security rule. They do not let a website on one port (our React app on port 5173) talk to a server on a different port (our Backend on port 5000).
+    If we don't install this, our React app will try to fetch data and the browser will block it with a big red "CORS Error."
+    app.use(cors()) tells the browser: "It is safe! I (the server) allow this React app to talk to me."
+
+dotenv : An Environment Variable Manager.
+    The Analogy: A Private Safe for our secrets.
+    We have sensitive data, specifically our Database Password inside that MongoDB connection string.
+    We never want to write our password directly into our code files (index.ts). If we share our code or push it to GitHub, hackers will see our password.
+    dotenv allows us,  to write the password in a hidden file called .env. The library reads that file and loads the password into the app securely, keeping it out of our main code.
+
+
+Install TypeScript & Dev Tools These tools help us write TS and restart the server automatically : 
+    npm install -D typescript ts-node nodemon @types/node @types/express @types/mongoose @types/cors
+
+nodemon : (Node Monitor) A tool that automatically restarts our server whenever we save a file.
+    The Analogy: It’s like "Hot Reloading" (HMR) in React, but for the Backend.
+    Without nodemon, the backend workflow is painful:
+
+    We change a line of code (e.g., change "Sold Out" to "No Stock").
+    We save the file.
+    The Server does nothing. It is still running the old version of the code in memory.
+    We have to go to the terminal, press Ctrl+C to stop the server.
+    We have to type npm run dev to start it again.
+    Repeat this 1000000 times a day.
+
+    With nodemon:
+    we change the code.
+    we save.
+    nodemon sees the file changed and instantly restarts the server for you.
+
+    In our package.json, we added this script:
+        "scripts": {
+            "dev": "nodemon src/index.ts"
+        }
+
+        This tells nodemon: "Watch the src folder. If any file changes, kill the current server and restart index.ts immediately."
+
+    typescript: The language compiler itself (turns TS into JS).
+
+ts-node: A helper that lets Node run TypeScript files directly without compiling them manually first.
+
+@types/...: These are "dictionaries" for TypeScript. Since libraries like Express were written in normal JavaScript, these packages tell TypeScript what the types are (so we get autocomplete!).
+
+Initialize TypeScript Config :
+    npx tsc --init
+ this create : tsconfig.json
+
+Find the line // "outDir": "./",.
+Uncomment it (remove //) and change it to: "outDir": "./dist",
+change : "verbatimModuleSyntax": true, to : "verbatimModuleSyntax": false,
+
+npm install -D @types/dotenv
+
+
+mongoDB : 
+
+Phase 1: MongoDB Atlas
+    This is the server that lives in the cloud.
+    Go to the website: Open mongodb.com/atlas and click "Get started".
+    Sign Up: Create an account (or sign in with Google).
+
+    Create a Cluster:
+        You will see a page asking to "New Project"
+        and then  : "Create a cluster".
+        Select  Free (the free tier).
+        Choose a provider (AWS is fine) and a region close to you (e.g., Frankfurt or Ireland if you are in Israel).
+        Click "Create". (It takes 1-3 minutes to build).
+        Security Setup (CRITICAL STEP):
+        Username & Password: It will ask you to create a database user.
+        Username: admin
+        Password: password123 
+        Click "Create User".
+        Connect to Cluster0
+        Connecting with MongoDB Driver
+
+
+
+

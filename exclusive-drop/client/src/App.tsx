@@ -1,6 +1,6 @@
+// Ilya Zeldner
 import { useState, useEffect } from "react";
 
-// Define what an "Order" looks like so TypeScript understands
 interface Order {
   _id: string;
   email: string;
@@ -14,43 +14,43 @@ interface Status {
 
 function App() {
   const [status, setStatus] = useState<Status | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]); // <--- NEW: State to hold the list
+  const [orders, setOrders] = useState<Order[]>([]);
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 1. THE NEW "FETCH" FUNCTION
+  // "FETCH" FUNCTION
   // It asks for TWO things: The Count AND The List
   const refreshData = async () => {
     try {
-      // A. Get the Status (Count)
-      const statusRes = await fetch("http://localhost:5000/api/status");
+      // Get the Status (Count)
+      const statusRes = await fetch("/api/status");
       const statusData = await statusRes.json();
       setStatus(statusData);
 
-      // B. Get the List (The new part!)
-      const ordersRes = await fetch("http://localhost:5000/api/orders");
+      // Get the List (The new part!)
+      const ordersRes = await fetch("/api/orders");
       const ordersList = await ordersRes.json();
       setOrders(ordersList);
     } catch (error) {
-      console.error("Server offline");
+      console.error("Server offline", error);
     }
   };
 
-  // 2. Auto-Refresh every 2 seconds
+  // Auto-Refresh every 2 seconds
   useEffect(() => {
     refreshData();
     const interval = setInterval(refreshData, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  // 3. Handle Buying
+  // Handle Buying
   const handleBuy = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/buy", {
+      const res = await fetch("/api/buy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -62,15 +62,15 @@ function App() {
       // Immediately refresh the list after buying
       refreshData();
     } catch (error) {
-      setMsg("Network Error");
+      console.error("Server offline", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. Reset Button (Optional)
+  // Reset Button (Optional)
   const handleReset = async () => {
-    await fetch("http://localhost:5000/api/reset", { method: "POST" });
+    await fetch("/api/reset", { method: "POST" });
     refreshData();
   };
 
@@ -114,7 +114,7 @@ function App() {
           <p className="text-center mt-4 text-indigo-400 font-bold">{msg}</p>
         )}
 
-        {/* --- THE NEW LIST SECTION --- */}
+        {/* THE NEW LIST SECTION */}
         <div className="mt-10 border-t border-slate-700 pt-6">
           <h3 className="text-slate-400 text-xs uppercase font-bold mb-4">
             Current Waiting List ({orders.length})
@@ -136,7 +136,6 @@ function App() {
             )}
           </div>
         </div>
-        {/* ----------------------------- */}
 
         <button
           onClick={handleReset}

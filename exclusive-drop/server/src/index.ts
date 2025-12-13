@@ -72,7 +72,7 @@ app.post("/api/buy", async (req: Request, res: Response) => {
   // Check inventory BEFORE saving
   const count = await Order.countDocuments();
 
-  if (count >= LIMIT) { 
+  if (count >= LIMIT) {
     return res.status(400).json({ success: false, message: "SOLD OUT 😢" });
   }
 
@@ -87,6 +87,5 @@ app.post("/api/reset", async (req: Request, res: Response) => {
   await Order.deleteMany({});
   res.json({ message: "Stock reset to 5." }); // Confirm Reset
 });
-
-const PORT = 5000; // Server Port
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); // Start Server

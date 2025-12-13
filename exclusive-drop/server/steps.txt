@@ -95,6 +95,28 @@ Phase 1: MongoDB Atlas
                 copy the connection from atlas : 
                     mongodb+srv://admin:webPassword@cluster0.lmffzt4.mongodb.net/?appName=Cluster0 
 
+npm install zod
+    It lets you define "The Rules" once, and it automatically creates the TypeScript types for you. It guarantees that if data enters your controller, it is 100% correct.
+
+our backend currently has a massive vulnerability: It has no "Speed Limit."
+
+Right now, Iwe could write a simple script to hit our /api/buy endpoint 1,000 times in 1 second.
+we could crash our database (DDoS attack).
+we could buy all 5 items before a human even clicks the mouse (Scalping Bot).
+
+The missing feature is Rate Limiting.
+
+We need to install a "Traffic Controller" that says: "This IP address can only make 10 requests per minute. After that, block them."
+
+npm install express-rate-limit
 
 
+The "Traffic Logger" (Morgan)
+In High-Tech, we never use console.log for traffic. We use Morgan. It prints a standard log line for every request, showing the Status Code (200, 400, 500) and the Response Time (in ms).
 
+npm install morgan @types/morgan
+
+The "Stealth Mode" 
+This is a standard security requirement. Helmet sets various HTTP headers to confuse attackers and prevent common browser hacks (like XSS or Clickjacking).
+
+npm install helmet

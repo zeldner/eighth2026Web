@@ -90,6 +90,11 @@ Phase 1: MongoDB Atlas
         Connect to Cluster0
         Connecting with MongoDB Driver
 
+        in mongoDB compass : 
+            add connection : 
+                copy the connection from atlas : 
+                    mongodb+srv://admin:webPassword@cluster0.lmffzt4.mongodb.net/?appName=Cluster0 
+
 
 
 

@@ -12,7 +12,7 @@ interface DropStatus {
   remaining: number;
   soldOut: boolean;
 }
-interface ErrorData {
+interface ErrorResponse {
   message: string;
 }
 
@@ -26,8 +26,7 @@ function App() {
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
-    // Encapsulate fetcher inside effect to prevent dependency cascades
-    const syncData = async () => {
+    const sync = async () => {
       try {
         const [resStatus, resOrders] = await Promise.all([
           axios.get<DropStatus>(`${API_BASE}/status`),
@@ -36,13 +35,14 @@ function App() {
         setStatus(resStatus.data);
         setOrders(resOrders.data);
       } catch (err) {
-        console.error("Backend unreachable. Check the server terminal." + err);
+        console.error(
+          "Vite Proxy Error: Backend unreachable on Port 5000" + err
+        );
       }
     };
-
-    syncData();
-    const heartbeat = setInterval(syncData, 5000);
-    return () => clearInterval(heartbeat);
+    sync();
+    const timer = setInterval(sync, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleJoin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -54,15 +54,15 @@ function App() {
       setMessage(res.data.message);
       setEmail("");
     } catch (err) {
-      const error = err as AxiosError<ErrorData>;
+      const error = err as AxiosError<ErrorResponse>;
       setMessage(error.response?.data?.message || "Join failed.");
     }
   };
 
   const handleReset = async () => {
     try {
-      const res = await axios.post<{ message: string }>(`${API_BASE}/reset`);
-      setMessage(res.data.message);
+      await axios.post(`${API_BASE}/reset`);
+      setMessage("System Restored");
       setStatus({ remaining: 5, soldOut: false });
       setOrders([]);
     } catch (err) {
@@ -74,14 +74,13 @@ function App() {
     <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-slate-800 rounded-[2.5rem] p-10 border border-slate-700 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
-
-        <h1 className="text-3xl font-black text-center mb-6 text-indigo-400 italic tracking-tighter">
+        <h1 className="text-3xl font-black text-center mb-6 text-indigo-400 italic">
           EXCLSV DROP
         </h1>
 
         <div className="bg-slate-900 rounded-3xl p-8 text-center mb-8 border border-slate-700/50">
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">
-            Live Slots
+            Live Inventory
           </p>
           <div className="text-6xl font-black">
             {status.soldOut ? "SOLD" : status.remaining}
@@ -98,8 +97,8 @@ function App() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <button className="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-4 rounded-xl active:scale-95 transition-all uppercase tracking-widest text-sm">
-              Reserve My Spot
+            <button className="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-4 rounded-xl active:scale-95 transition-all">
+              Join Waitlist
             </button>
           </form>
         )}
@@ -113,8 +112,8 @@ function App() {
         <div className="mt-10 pt-8 border-t border-slate-700/50">
           <div className="space-y-3 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
             {orders.length === 0 ? (
-              <p className="text-slate-700 italic text-sm text-center">
-                No participants yet
+              <p className="text-slate-600 italic text-sm text-center">
+                Waitlist is currently empty
               </p>
             ) : (
               orders.map((o) => (
@@ -123,9 +122,7 @@ function App() {
                   className="bg-slate-900/40 p-4 rounded-xl text-xs flex justify-between border border-slate-700/30"
                 >
                   <span className="text-slate-300">{o.email}</span>
-                  <span className="text-indigo-500 font-bold uppercase text-[8px]">
-                    Secured
-                  </span>
+                  <span className="text-indigo-500 font-black">SECURED</span>
                 </div>
               ))
             )}
@@ -135,7 +132,7 @@ function App() {
 
       <button
         onClick={handleReset}
-        className="mt-10 text-slate-700 hover:text-slate-500 text-[10px] font-bold uppercase tracking-widest transition-all"
+        className="mt-8 text-slate-700 hover:text-slate-500 text-[10px] font-bold uppercase tracking-widest transition-all"
       >
         Reset Database Instance
       </button>

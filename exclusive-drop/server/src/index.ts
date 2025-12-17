@@ -1,148 +1,130 @@
-import express, { Request, Response } from "express";
-import mongoose from "mongoose";
+/**
+ * Project: Exclusive Drop API
+ * Developer: Ilya Zeldner
+ */
+
+import express, { Request, Response, NextFunction } from "express";
+import mongoose, { Document, Schema } from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import { z } from "zod";
+import helmet from "helmet";
+import morgan from "morgan";
 import rateLimit from "express-rate-limit";
-import morgan from "morgan"; // Traffic Logger
-import helmet from "helmet"; // Security Headers
 
-// CONFIGURATION
+// 1. Initialize environment variables immediately
 dotenv.config();
-const app = express(); // EXPRESS APP
 
-app.use(helmet()); // Security: Hides server details (Stealth Mode)
-app.use(morgan("dev")); // Logging: Prints "GET /api/status 200 5ms" to terminal
+const app = express();
 
+// INTERFACES
+interface IOrder extends Document {
+  email: string;
+  createdAt: Date;
+}
+
+interface BuyRequestBody {
+  email: string;
+}
+
+// --- 🛡️ MIDDLEWARE ---
+app.use(helmet());
+app.use(morgan("dev")); // Logs every request to the terminal
 app.use(cors());
 app.use(express.json());
 
-app.use((req, res, next) => {
-  res.set("Cache-Control", "no-store"); // Disable caching
-  next(); // Prevents caching of responses
-  // Important for real-time data like stock counts
-  // Ensures clients always get the latest info
+// Prevent caching for real-time status updates
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
+// --- 🚦 SELECTIVE RATE LIMITER ---
+// Limits  the "Buy" button (POST requests) to prevent bot-spam
+const buyActionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many attempts. Please wait 1 minute.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // DATABASE CONNECTION
-const MONGO_URI = process.env.MONGO_URI || "";
+const MONGO_URI: string = process.env.MONGO_URI || "";
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("🔥 DB CONNECTED"))
-  .catch((err) => console.error("❌ DB ERROR:", err));
+if (!MONGO_URI) {
+  console.error("❌ CRITICAL: MONGO_URI missing from .env!");
+} else {
+  mongoose
+    .connect(MONGO_URI)
+    .then(() => console.log("✅ DB STATUS: Connected Successfully"))
+    .catch((err: Error) =>
+      console.error("❌ DB CONNECTION ERROR:", err.message)
+    );
+}
 
-// MONGOOSE MODEL
-const OrderSchema = new mongoose.Schema({
+const OrderSchema = new Schema<IOrder>({
   email: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
 
-const Order = mongoose.model("Order", OrderSchema);
+const Order = mongoose.model<IOrder>("Order", OrderSchema);
 
-// ZOD SCHEMA (Validation)
-const BuySchema = z.object({
-  email: z
-    .string()
-    .regex(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, "Invalid email format")
-    .min(5, "Email too short")
-    .max(100, "Email too long"),
-});
+// --- 🛤️ API ROUTES ---
 
-// SECURITY: RATE LIMITERS (DDoS Protection)
-
-// General Limiter (Standard traffic)
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api/", apiLimiter);
-
-// Strict Limiter (For the BUY button)
-const buyLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10,
-  message: { success: false, message: "🛑 Too fast! Slow down." },
-});
-
-// ROUTES
-
-// GET: Status
 app.get("/api/status", async (req: Request, res: Response) => {
   try {
     const count = await Order.countDocuments();
-    const LIMIT = 5;
     res.json({
-      remaining: Math.max(0, LIMIT - count),
-      soldOut: count >= LIMIT,
+      remaining: Math.max(0, 5 - count),
+      soldOut: count >= 5,
     });
-  } catch (error) {
-    res.status(500).json({ error: "Server Error" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch status" });
   }
 });
 
-// GET: Read Orders
 app.get("/api/orders", async (req: Request, res: Response) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders: IOrder[] = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
-  } catch (error) {
-    res.status(500).json({ error: "Could not fetch orders" });
+  } catch (err) {
+    res.status(500).json([]);
   }
 });
 
-// POST: Buy (Protected by 'buyLimiter')
 app.post(
   "/api/buy",
-  buyLimiter,
-  async (req: Request, res: Response): Promise<any> => {
-    // A. VALIDATION
-    const result = BuySchema.safeParse(req.body); // Validate input data
-
-    if (!result.success) {
-      // Fix for TypeScript errors
-      const rawError = result.error as any;
-
-      const errorMessage = rawError.errors
-        ? rawError.errors[0].message
-        : "Invalid Data";
-
-      return res.status(400).json({
-        success: false,
-        message: errorMessage,
-      });
-    }
-
-    // LOGIC
+  buyActionLimiter,
+  async (req: Request<{}, {}, BuyRequestBody>, res: Response) => {
     try {
+      const { email } = req.body;
       const count = await Order.countDocuments();
-      if (count >= 5) {
-        return res
-          .status(400)
-          .json({ success: false, message: "SOLD OUT! Too late." });
-      }
+      if (count >= 5)
+        return res.status(400).json({ message: "Campaign Sold Out!" });
 
-      const newOrder = new Order({ email: result.data.email }); // Create order
-      await newOrder.save(); // Save to DB
-
-      return res.json({ success: true, message: "Secure spot reserved!" });
-    } catch (error) {
-      console.error("Server Error:", error);
-      return res.status(500).json({ success: false, message: "Server Error" });
+      const newOrder = new Order({ email });
+      await newOrder.save();
+      res.json({ success: true, message: "Spot Secured!" });
+    } catch (err) {
+      res.status(500).json({ message: "Registration failed." });
     }
   }
 );
 
-// POST: Reset
 app.post("/api/reset", async (req: Request, res: Response) => {
-  await Order.deleteMany({}); // Clear all orders
-  res.json({ message: "Database Cleared" });
+  try {
+    await Order.deleteMany({});
+    res.json({ message: "System Reset Successful" });
+  } catch (err) {
+    res.status(500).json({ message: "Reset failed" });
+  }
 });
 
-//START SERVER
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Use 127.0.0.1 for maximum compatibility with Vite Proxy
+const PORT = 5000;
+app.listen(PORT, "127.0.0.1", () => {
+  console.log(`🚀 BACKEND ACTIVE: http://127.0.0.1:${PORT}`);
 });

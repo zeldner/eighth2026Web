@@ -1,151 +1,144 @@
 // Ilya Zeldner
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import axios, { AxiosError } from "axios";
+
+const API_BASE = "/api";
 
 interface Order {
-  // Order Type
   _id: string;
   email: string;
-  createdAt: string;
 }
-
-interface Status {
-  // Status Type
+interface DropStatus {
   remaining: number;
   soldOut: boolean;
 }
+interface ErrorData {
+  message: string;
+}
 
 function App() {
-  const [status, setStatus] = useState<Status | null>(null);
+  const [email, setEmail] = useState<string>("");
   const [orders, setOrders] = useState<Order[]>([]);
-  const [email, setEmail] = useState("");
-  const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<DropStatus>({
+    remaining: 5,
+    soldOut: false,
+  });
+  const [message, setMessage] = useState<string>("");
 
-  // "FETCH" FUNCTION
-  // It asks for TWO things: The Count AND The List
-  const refreshData = async () => {
-    try {
-      // Get the Status (Count)
-      const statusRes = await fetch("/api/status");
-      const statusData = await statusRes.json(); // { remaining: number, soldOut: boolean }
-      setStatus(statusData); // Update Status
-
-      // Get the List
-      const ordersRes = await fetch("/api/orders");
-      const ordersList = await ordersRes.json();
-      setOrders(ordersList);
-    } catch (error) {
-      console.error("Server offline", error);
-    }
-  };
-
-  // Auto-Refresh every 2 seconds
   useEffect(() => {
-    refreshData(); // Initial fetch
-    const interval = setInterval(refreshData, 2000); // Refresh every 2s
-    return () => clearInterval(interval); // Cleanup on unmount
+    // Encapsulate fetcher inside effect to prevent dependency cascades
+    const syncData = async () => {
+      try {
+        const [resStatus, resOrders] = await Promise.all([
+          axios.get<DropStatus>(`${API_BASE}/status`),
+          axios.get<Order[]>(`${API_BASE}/orders`),
+        ]);
+        setStatus(resStatus.data);
+        setOrders(resOrders.data);
+      } catch (err) {
+        console.error("Backend unreachable. Check the server terminal." + err);
+      }
+    };
+
+    syncData();
+    const heartbeat = setInterval(syncData, 5000);
+    return () => clearInterval(heartbeat);
   }, []);
 
-  // Handle Buying
-  const handleBuy = async (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true); // Start Loading
-
     try {
-      const res = await fetch("/api/buy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }), // Send Email
+      const res = await axios.post<{ message: string }>(`${API_BASE}/buy`, {
+        email,
       });
-      const result = await res.json(); // { success: boolean, message: string }
-      setMsg(result.message); // Show message
-      if (result.success) setEmail(""); // Clear input
-
-      // Immediately refresh the list after buying
-      refreshData();
-    } catch (error) {
-      console.error("Server offline", error);
-    } finally {
-      setLoading(false);
+      setMessage(res.data.message);
+      setEmail("");
+    } catch (err) {
+      const error = err as AxiosError<ErrorData>;
+      setMessage(error.response?.data?.message || "Join failed.");
     }
   };
 
-  // Reset Button
   const handleReset = async () => {
-    await fetch("/api/reset", { method: "POST" });
-    refreshData(); // Refresh data after reset
+    try {
+      const res = await axios.post<{ message: string }>(`${API_BASE}/reset`);
+      setMessage(res.data.message);
+      setStatus({ remaining: 5, soldOut: false });
+      setOrders([]);
+    } catch (err) {
+      setMessage("Reset failed" + err);
+    }
   };
 
-  if (!status)
-    return <div className="text-white text-center mt-10">Connecting...</div>;
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4">
-      <div className="max-w-md w-full bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
-        {/* HEADER */}
-        <h1 className="text-3xl font-bold text-center mb-6">EXCLUSIVE DROP</h1>
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-md bg-slate-800 rounded-[2.5rem] p-10 border border-slate-700 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500"></div>
 
-        {/* COUNTER */}
-        <div
-          className={`p-4 rounded-xl border-2 text-center mb-6 ${
-            status.soldOut
-              ? "border-red-500 bg-red-900/20"
-              : "border-emerald-500 bg-emerald-900/20"
-          }`}
-        >
-          <h2 className="text-2xl font-bold">{status.remaining} LEFT</h2>
+        <h1 className="text-3xl font-black text-center mb-6 text-indigo-400 italic tracking-tighter">
+          EXCLSV DROP
+        </h1>
+
+        <div className="bg-slate-900 rounded-3xl p-8 text-center mb-8 border border-slate-700/50">
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">
+            Live Slots
+          </p>
+          <div className="text-6xl font-black">
+            {status.soldOut ? "SOLD" : status.remaining}
+          </div>
         </div>
 
-        {/* FORM */}
         {!status.soldOut && (
-          <form onSubmit={handleBuy} className="flex flex-col gap-3">
+          <form onSubmit={handleJoin} className="space-y-4">
             <input
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               type="email"
-              placeholder="Enter email..."
+              placeholder="Enter email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="p-3 rounded bg-slate-700 border border-slate-600 outline-none focus:border-indigo-500"
+              required
             />
-            <button className="bg-indigo-600 p-3 rounded font-bold hover:bg-indigo-500 transition">
-              {loading ? "PROCESSING..." : "JOIN LIST"}
+            <button className="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-4 rounded-xl active:scale-95 transition-all uppercase tracking-widest text-sm">
+              Reserve My Spot
             </button>
           </form>
         )}
 
-        {msg && (
-          <p className="text-center mt-4 text-indigo-400 font-bold">{msg}</p>
+        {message && (
+          <div className="mt-6 text-center text-indigo-400 font-bold text-sm animate-pulse">
+            {message}
+          </div>
         )}
 
-        {/* THE NEW LIST SECTION */}
-        <div className="mt-10 border-t border-slate-700 pt-6">
-          <h3 className="text-slate-400 text-xs uppercase font-bold mb-4">
-            Current Waiting List ({orders.length})
-          </h3>
-
-          <div className="space-y-2 max-h-40 overflow-y-auto">
+        <div className="mt-10 pt-8 border-t border-slate-700/50">
+          <div className="space-y-3 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
             {orders.length === 0 ? (
-              <p className="text-slate-600 text-sm italic">List is empty...</p>
+              <p className="text-slate-700 italic text-sm text-center">
+                No participants yet
+              </p>
             ) : (
-              orders.map((order) => (
+              orders.map((o) => (
                 <div
-                  key={order._id}
-                  className="flex justify-between p-2 bg-slate-700/50 rounded text-sm"
+                  key={o._id}
+                  className="bg-slate-900/40 p-4 rounded-xl text-xs flex justify-between border border-slate-700/30"
                 >
-                  <span className="text-emerald-300">{order.email}</span>
-                  <span className="text-slate-500">Confirmed</span>
+                  <span className="text-slate-300">{o.email}</span>
+                  <span className="text-indigo-500 font-bold uppercase text-[8px]">
+                    Secured
+                  </span>
                 </div>
               ))
             )}
           </div>
         </div>
-
-        <button
-          onClick={handleReset}
-          className="mt-6 text-xs text-slate-600 underline w-full text-center"
-        >
-          Reset System
-        </button>
       </div>
+
+      <button
+        onClick={handleReset}
+        className="mt-10 text-slate-700 hover:text-slate-500 text-[10px] font-bold uppercase tracking-widest transition-all"
+      >
+        Reset Database Instance
+      </button>
     </div>
   );
 }

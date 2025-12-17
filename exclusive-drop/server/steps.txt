@@ -1,7 +1,7 @@
 npm init -y
 npm install express mongoose cors dotenv
 
-express :  The Web Framework.
+express :  The Web Framework. 
     The Analogy: Think of Node.js as the engine of a car. Express is the steering wheel, pedals, and dashboard.
     Node.js by itself is just a runtime—it knows how to execute JavaScript , but it doesn't know how to handle web requests easily. Express simplifies everything.
     Without Express: We would write 50 lines of complex code just to receive a request.

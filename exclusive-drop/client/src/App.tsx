@@ -2,12 +2,14 @@
 import { useState, useEffect } from "react";
 
 interface Order {
+  // Order Type
   _id: string;
   email: string;
   createdAt: string;
 }
 
 interface Status {
+  // Status Type
   remaining: number;
   soldOut: boolean;
 }
@@ -25,10 +27,10 @@ function App() {
     try {
       // Get the Status (Count)
       const statusRes = await fetch("/api/status");
-      const statusData = await statusRes.json();
-      setStatus(statusData);
+      const statusData = await statusRes.json(); // { remaining: number, soldOut: boolean }
+      setStatus(statusData); // Update Status
 
-      // Get the List (The new part!)
+      // Get the List
       const ordersRes = await fetch("/api/orders");
       const ordersList = await ordersRes.json();
       setOrders(ordersList);
@@ -39,25 +41,25 @@ function App() {
 
   // Auto-Refresh every 2 seconds
   useEffect(() => {
-    refreshData();
-    const interval = setInterval(refreshData, 2000);
-    return () => clearInterval(interval);
+    refreshData(); // Initial fetch
+    const interval = setInterval(refreshData, 2000); // Refresh every 2s
+    return () => clearInterval(interval); // Cleanup on unmount
   }, []);
 
   // Handle Buying
   const handleBuy = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoading(true); // Start Loading
 
     try {
       const res = await fetch("/api/buy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email }), // Send Email
       });
-      const result = await res.json();
-      setMsg(result.message);
-      if (result.success) setEmail("");
+      const result = await res.json(); // { success: boolean, message: string }
+      setMsg(result.message); // Show message
+      if (result.success) setEmail(""); // Clear input
 
       // Immediately refresh the list after buying
       refreshData();
@@ -68,10 +70,10 @@ function App() {
     }
   };
 
-  // Reset Button (Optional)
+  // Reset Button
   const handleReset = async () => {
     await fetch("/api/reset", { method: "POST" });
-    refreshData();
+    refreshData(); // Refresh data after reset
   };
 
   if (!status)

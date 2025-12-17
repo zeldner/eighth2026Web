@@ -9,18 +9,19 @@ import helmet from "helmet"; // Security Headers
 
 // CONFIGURATION
 dotenv.config();
-const app = express();
+const app = express(); // EXPRESS APP
 
 app.use(helmet()); // Security: Hides server details (Stealth Mode)
 app.use(morgan("dev")); // Logging: Prints "GET /api/status 200 5ms" to terminal
-// -----------------------------------
 
 app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
-  res.set("Cache-Control", "no-store");
-  next();
+  res.set("Cache-Control", "no-store"); // Disable caching
+  next(); // Prevents caching of responses
+  // Important for real-time data like stock counts
+  // Ensures clients always get the latest info
 });
 
 // DATABASE CONNECTION
@@ -31,7 +32,7 @@ mongoose
   .then(() => console.log("🔥 DB CONNECTED"))
   .catch((err) => console.error("❌ DB ERROR:", err));
 
-// 3. MONGOOSE MODEL
+// MONGOOSE MODEL
 const OrderSchema = new mongoose.Schema({
   email: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
@@ -98,7 +99,7 @@ app.post(
   buyLimiter,
   async (req: Request, res: Response): Promise<any> => {
     // A. VALIDATION
-    const result = BuySchema.safeParse(req.body);
+    const result = BuySchema.safeParse(req.body); // Validate input data
 
     if (!result.success) {
       // Fix for TypeScript errors
@@ -123,8 +124,8 @@ app.post(
           .json({ success: false, message: "SOLD OUT! Too late." });
       }
 
-      const newOrder = new Order({ email: result.data.email });
-      await newOrder.save();
+      const newOrder = new Order({ email: result.data.email }); // Create order
+      await newOrder.save(); // Save to DB
 
       return res.json({ success: true, message: "Secure spot reserved!" });
     } catch (error) {
@@ -136,7 +137,7 @@ app.post(
 
 // POST: Reset
 app.post("/api/reset", async (req: Request, res: Response) => {
-  await Order.deleteMany({});
+  await Order.deleteMany({}); // Clear all orders
   res.json({ message: "Database Cleared" });
 });
 

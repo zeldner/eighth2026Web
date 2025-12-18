@@ -76,7 +76,6 @@ const Order = mongoose.model<IOrder>(
 );
 
 // API ROUTES
-
 app.get("/api/status", async (req: Request, res: Response) => {
   try {
     const count = await Order.countDocuments();
@@ -86,6 +85,7 @@ app.get("/api/status", async (req: Request, res: Response) => {
   }
 });
 
+// Get all orders (for admin view)
 app.get("/api/orders", async (req: Request, res: Response) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
@@ -95,6 +95,7 @@ app.get("/api/orders", async (req: Request, res: Response) => {
   }
 });
 
+// Buy / Join action
 app.post("/api/buy", buyActionLimiter, async (req: Request, res: Response) => {
   try {
     // ZOD SAFE PARSE
@@ -108,7 +109,7 @@ app.post("/api/buy", buyActionLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const { email } = result.data;
+    const { email } = result.data; // Validated email
 
     // CAPACITY CHECK
     const count = await Order.countDocuments();
@@ -123,6 +124,7 @@ app.post("/api/buy", buyActionLimiter, async (req: Request, res: Response) => {
   }
 });
 
+// Reset system (delete all orders)
 app.post("/api/reset", async (req: Request, res: Response) => {
   try {
     await Order.deleteMany({});

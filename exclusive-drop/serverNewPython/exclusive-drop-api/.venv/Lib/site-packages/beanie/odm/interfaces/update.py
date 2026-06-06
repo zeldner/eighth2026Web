@@ -1,0 +1,119 @@
+from abc import abstractmethod
+from collections.abc import Mapping
+from datetime import datetime
+from typing import Any
+
+from pymongo.asynchronous.client_session import AsyncClientSession
+
+from beanie.odm.bulk import BulkWriter
+from beanie.odm.fields import ExpressionField
+from beanie.odm.operators.update.general import (
+    CurrentDate,
+    Inc,
+    Set,
+)
+
+
+class UpdateMethods:
+    """
+    Update methods
+    """
+
+    @abstractmethod
+    def update(
+        self,
+        *args: Mapping[str, Any],
+        session: AsyncClientSession | None = None,
+        bulk_writer: BulkWriter | None = None,
+        **kwargs: Any,
+    ):
+        return self
+
+    def set(
+        self,
+        expression: dict[ExpressionField | str | Any, Any],
+        session: AsyncClientSession | None = None,
+        bulk_writer: BulkWriter | None = None,
+        **kwargs: Any,
+    ):
+        """
+        Set values
+
+        Example:
+
+        ```python
+
+        class Sample(Document):
+            one: int
+
+        await Document.find(Sample.one == 1).set({Sample.one: 100})
+
+        ```
+
+        Uses [Set operator](operators/update.md#set)
+
+        :param expression: Dict[Union[ExpressionField, str, Any], Any] - keys and
+        values to set
+        :param session: Optional[AsyncClientSession] - pymongo session
+        :param bulk_writer: Optional[BulkWriter] - bulk writer
+        :return: self
+        """
+        return self.update(
+            Set(expression), session=session, bulk_writer=bulk_writer, **kwargs
+        )
+
+    def current_date(
+        self,
+        expression: dict[datetime | ExpressionField | str, Any],
+        session: AsyncClientSession | None = None,
+        bulk_writer: BulkWriter | None = None,
+        **kwargs: Any,
+    ):
+        """
+        Set current date
+
+        Uses [CurrentDate operator](operators/update.md#currentdate)
+
+        :param expression: Dict[Union[datetime, ExpressionField, str], Any]
+        :param session: Optional[AsyncClientSession] - pymongo session
+        :param bulk_writer: Optional[BulkWriter] - bulk writer
+        :return: self
+        """
+        return self.update(
+            CurrentDate(expression),
+            session=session,
+            bulk_writer=bulk_writer,
+            **kwargs,
+        )
+
+    def inc(
+        self,
+        expression: dict[ExpressionField | float | int | str, Any],
+        session: AsyncClientSession | None = None,
+        bulk_writer: BulkWriter | None = None,
+        **kwargs: Any,
+    ):
+        """
+        Increment
+
+        Example:
+
+        ```python
+
+        class Sample(Document):
+            one: int
+
+        await Document.find(Sample.one == 1).inc({Sample.one: 100})
+
+        ```
+
+        Uses [Inc operator](operators/update.md#inc)
+
+        :param expression: Dict[Union[ExpressionField, float, int, str], Any]
+        :param session: Optional[AsyncClientSession] - pymongo session
+        :param bulk_writer: Optional[BulkWriter] - bulk writer
+        :return: self
+        """
+        return self.update(
+            Inc(expression), session=session, bulk_writer=bulk_writer, **kwargs
+        )

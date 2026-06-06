@@ -1,0 +1,23 @@
+# Create a virtual environment
+python -m venv .venv
+
+# Activate the virtual environment
+
+# On Windows (Command Prompt):
+.venv\Scripts\activate
+or
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+
+
+python -m pip install fastapi uvicorn[standard] beanie pydantic[email] loguru python-dotenv
+python -m uvicorn main:app --reload
+
+Make sure your environment has these exact dependencies installed : 
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+beanie>=1.25.0
+pymongo>=4.6.0
+pydantic[email]>=2.6.0
+loguru>=0.7.0
+python-dotenv>=1.0.0

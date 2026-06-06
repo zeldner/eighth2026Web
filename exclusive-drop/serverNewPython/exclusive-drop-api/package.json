@@ -1,0 +1,9 @@
+{
+  "name": "exclusive-drop-api",
+  "version": "1.0.0",
+  "description": "FastAPI Backend for Exclusive Drop",
+  "scripts": {
+    "dev": ".\\.venv\\Scripts\\python main.py",
+    "install:deps": ".\\.venv\\Scripts\\python -m pip install -r requirements.txt"
+  }
+}
